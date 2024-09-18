@@ -168,7 +168,7 @@ console.clear();
 async function process_sales(){    
     let FH = "'FABR','FBPT','FBPW','FBTR','FDSR','FGLP','FKPP','FKPS','FLBS','FMSG','FPGH','FPKR','FPLH','FPRG','FSAB','FSGM','FSIK','FSSL','FSTK','FSTP','FTKM','FTKP','FTMN','FTMS','FTMU','FTPT'";
     let SBH = "'BDS','DGO','KHM','KNG','M88','MGT','MLN','PPR','PR2','PTS','SJT','SPG','TLP','TRN','SBBK','SRGD','STLB','SLMW','SPRS','STPP','GBVL','GDGO','GDMP','GHTP','GINN','GINT','GKBT','GKMS','GKPP','GLTJ','GPLC','GPPR','GPTG','GT2A','GTWR'";
-    let period='2024-08'
+    let period='2024-08' 
     // console.log('Processing Adjustment 2024 FH_TMP1');
     // await process_adjusted('2024 FH_TMP1','FH_TMP1',FH,period);
     // console.log('Adjustment 2024 FH_TMP1 - Done');
