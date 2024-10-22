@@ -75,9 +75,14 @@ async function process_data(code,itemcode_array,outlet,gtype){
                     query += " WHERE docdate between DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY) - INTERVAL 1 MONTH and LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))";
                     query += " AND itemcode in("+itemcode_array+")";
                 break;
+                case 6:    
+                    query += " WHERE docdate between LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 2 MONTH)) + INTERVAL 1 DAY and LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))";
+                    query += " AND itemcode in("+itemcode_array+")";
+                break;                
             }
             switch (gtype) {                
                 case 5:    
+                case 6:
                     query += " GROUP BY a.location";
                     query += " )b ON b.location='"+_location+"'";
                 break;
@@ -106,10 +111,15 @@ async function process_data(code,itemcode_array,outlet,gtype){
                 case 5:
                     query += " WHERE docdate between DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY) - INTERVAL 1 MONTH AND LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))  AND a.location='"+_location+"'";
                     query += " AND itemcode in("+itemcode_array+")";
-                break;                
+                break;
+                case 6:
+                    query += " WHERE docdate between LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 2 MONTH)) + INTERVAL 1 DAY and LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND a.location='"+_location+"'";
+                    query += " AND itemcode in("+itemcode_array+")";
+                break;                 
             }
             switch (gtype) {
-                case 5:   
+                case 5:
+                case 6:                    
                     query += " GROUP BY a.location";
                     query += " )c ON c.location='"+_location+"'";
                 break;
@@ -139,10 +149,15 @@ async function process_data(code,itemcode_array,outlet,gtype){
                 case 5:
                     query += " WHERE bizdate between DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY) - INTERVAL 1 MONTH AND LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))  AND location='"+_location+"'";
                     query += " AND itemcode in("+itemcode_array+")";
-                break;                
+                break;                     
+                case 6:
+                    query += " WHERE bizdate between LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 2 MONTH)) + INTERVAL 1 DAY and LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND location='"+_location+"'";
+                    query += " AND itemcode in("+itemcode_array+")";
+                break;                   
             }                        
             switch (gtype) {
-                case 5:    
+                case 5: 
+                case 6:   
                     query += " GROUP BY location";
                     query += " )d ON d.location='"+_location+"'";
                 break;
@@ -172,10 +187,15 @@ async function process_data(code,itemcode_array,outlet,gtype){
                 case 5:
                     query += " WHERE docdate between DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY) - INTERVAL 1 MONTH AND LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))  AND location='"+_location+"' AND trans_type='ADJUST_REASON' AND code_group='DISPOSAL' AND `type`='DISP'";
                     query += " AND itemcode in("+itemcode_array+")";
-                break;                
+                break;
+                case 6:
+                    query += " WHERE docdate between LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 2 MONTH)) + INTERVAL 1 DAY and LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND location='"+_location+"' AND trans_type='ADJUST_REASON' AND code_group='DISPOSAL' AND `type`='DISP'";
+                    query += " AND itemcode in("+itemcode_array+")";
+                break;                    
             }                         
             switch (gtype) {
-                case 5:  
+                case 5:
+                case 6:
                     query += " GROUP BY b.location";
                     query += " )e ON e.location='"+_location+"'";
                 break;
@@ -204,10 +224,15 @@ async function process_data(code,itemcode_array,outlet,gtype){
                 case 5:
                     query += " WHERE docdate between DATE_SUB(CURDATE(), INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY) - INTERVAL 1 MONTH AND LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH))  AND a.location='"+_location+"'";
                     query += " AND itemcode in("+itemcode_array+")";
-                break;                
+                break;
+                case 6:
+                    query += " WHERE docdate between LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 2 MONTH)) + INTERVAL 1 DAY and LAST_DAY(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND a.location='"+_location+"'";
+                    query += " AND itemcode in("+itemcode_array+")";
+                break;                  
             }                        
             switch (gtype) {
-                case 5:     
+                case 5:
+                case 6:
                     query += " GROUP BY a.location";
                     query += " )f ON f.location='"+_location+"'";
                 break;
@@ -253,12 +278,12 @@ async function process_sales(){
     const Array_Vege="'12530','12537','12544','12551','12558','12593','12880','13881','14042','14063','14854','14861','15386','15393','15421','15428','15442','15449','15484'";
     let CKSR = ['BDS','DGO','KHM','KNG','M88','MGT','MLN','PPR','PR2','PTS','SJT','SPG','TLP','TRN'];
     let CKSM = ['GBVL','GDGO','GDMP','GHTP','GINN','GINT','GKBT','GKMS','GKPP','GLTJ','GPLC','GPPR','GPTG','GT2A','GTWR','STPP','STLB','SRGD','SPRS','SLMW','SBBK'];    
-    console.log('CKSR-Daily');
-    await process_data('CKSR-Daily g_sayur_anis',Array_Vege,CKSR,1);
-    console.log('CKSR-Daily - Done');
-    console.log('CKSM-Daily');
-    await process_data('CKSM-Daily g_sayur_anis',Array_Vege,CKSM,1);   
-    console.log('CKSM-Daily - Done');
+    // console.log('CKSR-Daily');
+    // await process_data('CKSR-Daily g_sayur_anis',Array_Vege,CKSR,1);
+    // console.log('CKSR-Daily - Done');
+    // console.log('CKSM-Daily');
+    // await process_data('CKSM-Daily g_sayur_anis',Array_Vege,CKSM,1);   
+    // console.log('CKSM-Daily - Done');
 
     // console.log('CKSR-Weekly');
     // await process_data('CKSR-Weekly g_sayur_anis',Array_Vege,CKSR,2);
@@ -267,13 +292,6 @@ async function process_sales(){
     // await process_data('CKSM-Weekly g_sayur_anis',Array_Vege,CKSM,2);   
     // console.log('CKSM-Weekly - Done');    
 
-    // console.log('CKSR-Monthly');
-    // await process_data('CKSR-Monthly g_sayur_anis',Array_Vege,CKSR,3);
-    // console.log('CKSR-Monthly - Done');
-    // console.log('CKSM-Monthly');
-    // await process_data('CKSM-Monthly g_sayur_anis',Array_Vege,CKSM,3);   
-    // console.log('CKSM-Monthly - Done');    
-
     // console.log('CKSR-Weekly-summary');
     // await process_data('CKSR-Weekly-summary g_sayur_anis',Array_Vege,CKSR,4);   
     // console.log('CKSR-Weekly-summary - Done');  
@@ -281,12 +299,26 @@ async function process_sales(){
     // await process_data('CKSM-Weekly-summary g_sayur_anis',Array_Vege,CKSM,4);   
     // console.log('CKSM-Weekly-summary - Done');  
 
+    console.log('CKSR-Monthly');
+    await process_data('CKSR-Monthly g_sayur_anis',Array_Vege,CKSR,3);
+    console.log('CKSR-Monthly - Done');
+    console.log('CKSM-Monthly');
+    await process_data('CKSM-Monthly g_sayur_anis',Array_Vege,CKSM,3);   
+    console.log('CKSM-Monthly - Done');    
+
     // console.log('CKSR-Monthly-summary');
     // await process_data('CKSR-Monthly-summary g_sayur_anis',Array_Vege,CKSR,5);   
     // console.log('CKSR-Monthly-summary - Done');  
     // console.log('CKSM-Monthly-summary');
     // await process_data('CKSM-Monthly-summary g_sayur_anis',Array_Vege,CKSM,5);   
     // console.log('CKSM-Monthly-summary - Done');  
+
+    // console.log('CKSR-Monthly-summary-previuos');
+    // await process_data('CKSR-Monthly-summary-previuos g_sayur_anis',Array_Vege,CKSR,6);   
+    // console.log('CKSR-Monthly-summary-previuos - Done');  
+    // console.log('CKSM-Monthly-summary-previuos');
+    // await process_data('CKSM-Monthly-summary-previuos g_sayur_anis',Array_Vege,CKSM,6);   
+    // console.log('CKSM-Monthly-summary-previuos - Done');  
 
     process.exit();
 }

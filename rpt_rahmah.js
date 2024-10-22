@@ -73,16 +73,17 @@ async function process_transaction(bizdates){
     }    
     console.log('Populating  Done');  
 }
-async function process_data(bizdates){
+async function process_data(bizdates,Outelt){
     const tmpstamp = new Date();console.log('Populating sales : '+bizdates);
     let datas = [];
+    let itemcode="'210497','210490','1008170','1008171','1008172','110285','110292','1037858','1037850','1037846','1037853','1037859','1037862','124544','124572','124530','979846','979839','979832','979853','450044','132356','134008','1015164','167531','12816','193641','342629','168245','222390','1028722','167643','167328','313530','14819','15988','14770','1040805','13251','1042032','426195'";
     let connPanda,connWeb,qry=''
     try {
         connPanda = await dbpool.getConnection();
         connWeb = await dbpool2.getConnection();
         await connWeb.beginTransaction();
-        await connWeb.query("DELETE FROM cksgroup_intra.tbl_sales where bizdate='"+bizdates+"'");
-        qry="SELECT `code` FROM location WHERE LEFT(`code`,2)<>'DC' and `code`not in ('GDCF','GDC','HQ')";
+        await connWeb.query("DELETE FROM cksgroup_intra.tbl_sales where "+bizdates+"");
+        qry="SELECT `code` FROM location WHERE `code`='"+Outelt+"'";
         const tbl_location = await connWeb.query(qry); 
         for (let j = 0; j < tbl_location[0].length; j++) {
             const _location= tbl_location[0][j]['code'];
@@ -196,15 +197,6 @@ async function process_data(bizdates){
 console.clear();
 async function process_sales(){
     await process_data('2024-10');
-    // await process_data('2024-09');
-    // await process_data('2024-08');
-    // await process_data('2024-07');
-    // await process_data('2024-06');
-    // await process_data('2024-05');
-    // await process_data('2024-04');
-    // await process_data('2024-03');
-    // await process_data('2024-02');
-    // await process_data('2024-01');
     console.log('Done');
     process.exit();
 }

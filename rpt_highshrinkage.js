@@ -98,14 +98,14 @@ async function process_adjusted(process_type,vartype,outletlist,period){
         let item_list = await connWeb.query("select textlist from script_variables where setname='"+vartype+"'");
         item_list=item_list[0][0]['textlist'];
         let query = "SELECT"; 
-        query += " `code` Outlet,a.itemcode,a.barcode,a.description,packsize PS,''UP,"; 
+        query += " `code` Outlet,a.itemcode,COALESCE(c.barcode,a.barcode)barcode,COALESCE(c.description,a.description)description,COALESCE(c.packsize,a.packsize)PS,a.um,''UP,"; 
         query += " IF(ISNULL(c.QtyAdjusted),0,c.QtyAdjusted) QtyAdjusted,"; 
         query += " IF(ISNULL(c.AmountAdjusted),0,c.AmountAdjusted) AmountAdjusted, cast(docdate as char)docdate"; 
         query += " FROM("; 
-        query += " SELECT `code`,b.itemcode,packsize,barcode,b.description"; 
+        query += " SELECT `code`,b.itemcode,um,packsize,barcode,b.description"; 
         query += " FROM location a"; 
         query += " LEFT JOIN ("; 
-        query += " SELECT b.itemcode, barcode, b.description, packsize"; 
+        query += " SELECT b.itemcode, barcode, b.description,um, packsize"; 
         query += " FROM itemmaster b"; 
         query += " LEFT JOIN itembarcode c ON b.itemcode=c.itemcode"; 
         query += " WHERE b.itemcode IN("+item_list+")"; 
@@ -114,27 +114,31 @@ async function process_adjusted(process_type,vartype,outletlist,period){
         query += " WHERE `code` IN("+outletlist+")"; 
         query += " ) a"; 
         query += " LEFT JOIN("; 
-        query += " SELECT Location, itemlink, itemcode, barcode, Description, docdate,"; 
-        query += " IF(ISNULL(MAX(QtyAdjustedIN)),0,MAX(QtyAdjustedIN)) - IF(ISNULL(MAX(QtyAdjustedOUT)),0,MAX(QtyAdjustedOUT)) QtyAdjusted,"; 
-        query += " IF(ISNULL(MAX(AmountAdjustedIN)),0,MAX(AmountAdjustedIN)) - IF(ISNULL(MAX(AmountAdjustedOUT)),0,MAX(AmountAdjustedOUT)) AmountAdjusted"; 
-        query += " FROM("; 
-        query += " SELECT Location, itemlink, itemcode, barcode, b.Description, docdate,"; 
-        query += " CASE WHEN AdjType='OUT' THEN ROUND(SUM(qty),2) END QtyAdjustedOUT,"; 
-        query += " CASE WHEN AdjType='IN' THEN ROUND(SUM(qty),2) END QtyAdjustedIN,"; 
-        query += " CASE WHEN AdjType='OUT' THEN ROUND(SUM(totalprice),2) END AmountAdjustedOUT,"; 
-        query += " CASE WHEN AdjType='IN' THEN ROUND(SUM(totalprice),2) END AmountAdjustedIN"; 
-        query += " FROM backend.adjustmain a"; 
-        query += " LEFT JOIN backend.adjustchild b ON a.refno=b.refno"; 
-        query += " WHERE b.itemcode IN("+item_list+")"; 
-        query += " AND location IN("+outletlist+")"; 
-        query += " AND LEFT(docdate,7)='"+period+"'"; 
-        query += " GROUP BY location, itemcode"; 
-        query += " ORDER BY location, itemlink"; 
-        query += " ) p"; 
-        query += " GROUP BY location, itemcode"; 
-        query += " ) c ON `code`=c.location AND a.itemcode=c.itemcode"; 
-        query += " GROUP BY `code`, a.itemcode"; 
-        query += " ORDER BY `code`, a.itemcode"; 
+
+        query += "SELECT Location, itemlink, itemcode, barcode,um,packsize, Description, docdate, ";  
+        query += "IF(ISNULL(MAX(QtyAdjustedIN)),0,MAX(QtyAdjustedIN)) - IF(ISNULL(MAX(QtyAdjustedOUT)),0,MAX(QtyAdjustedOUT)) QtyAdjusted, ";  
+        query += "IF(ISNULL(MAX(AmountAdjustedIN)),0,MAX(AmountAdjustedIN)) - IF(ISNULL(MAX(AmountAdjustedOUT)),0,MAX(AmountAdjustedOUT)) AmountAdjusted ";  
+        query += "FROM( ";  
+        query += "SELECT Location, itemlink, itemcode, barcode,um,packsize, Description, docdate, ";  
+        query += "MAX(QtyAdjustedIN) QtyAdjustedIN, MAX(QtyAdjustedOUT) QtyAdjustedOUT, MAX(AmountAdjustedIN) AmountAdjustedIN, MAX(AmountAdjustedOUT) AmountAdjustedOUT ";  
+        query += "FROM( ";  
+        query += "SELECT Location, itemlink, itemcode,um, barcode, b.Description, docdate,packsize, ";  
+        query += "CASE WHEN AdjType='OUT' THEN ROUND(SUM(qty*packsize),2) END QtyAdjustedOUT, ";  
+        query += "CASE WHEN AdjType='IN' THEN ROUND(SUM(qty*packsize),2) END QtyAdjustedIN, ";  
+        query += "CASE WHEN AdjType='OUT' THEN ROUND(SUM(totalprice),2) END AmountAdjustedOUT, ";  
+        query += "CASE WHEN AdjType='IN' THEN ROUND(SUM(totalprice),2) END AmountAdjustedIN ";  
+        query += "FROM backend.adjustmain a ";  
+        query += "LEFT JOIN backend.adjustchild b ON a.refno=b.refno ";  
+        query += "WHERE b.itemlink IN("+item_list+") ";  
+        query += "AND location IN("+outletlist+") ";  
+        query += "AND LEFT(docdate,7)='"+period+"' ";  
+        query += "GROUP BY location, itemcode) s ";  
+        query += "GROUP BY location, itemcode) p ";  
+        query += "GROUP BY location, itemlink, itemcode";
+        
+        query += ") c ON `code`=c.location AND a.itemcode=c.itemlink"; 
+        query += " GROUP BY `code`, c.itemcode,c.itemlink";         
+        // console.log(query);process.exit();
         let tbl_list = await connPanda.query(query);
         let tbllenght=tbl_list[0].length;
         for (let i = 0; i < tbl_list[0].length; i++) {  
@@ -144,14 +148,15 @@ async function process_adjusted(process_type,vartype,outletlist,period){
             let tmp_barcode=tbl_list[0][i]['barcode'];
             let tmp_description=tbl_list[0][i]['description'];
             tmp_description=tmp_description.replace(/'/g, "\\'");
+            let tmp_um=tbl_list[0][i]['um'];
             let tmp_PS=tbl_list[0][i]['PS'];
             let tmp_UP=tbl_list[0][i]['UP'];
             let tmp_QtyAdjusted=tbl_list[0][i]['QtyAdjusted'];
             let tmp_AmountAdjusted=tbl_list[0][i]['AmountAdjusted'];
             let tmp_docdate=tbl_list[0][i]['docdate'];if(await tmp_docdate!==null){tmp_docdate="'"+tmp_docdate+"'";}
-            let tmp_qry ="REPLACE INTO cksgroup_intra.tbl_highshrink(process_type,outlet,itemcode,barcode,DESCRIPTION,ps,adjustedqty,adjustedamt,adjusteddate,salesqty,salesamt,salesmonth,last_process)";
+            let tmp_qry ="REPLACE INTO cksgroup_intra.tbl_highshrink(process_type,outlet,itemcode,barcode,DESCRIPTION,ps,uom,adjustedqty,adjustedamt,adjusteddate,salesqty,salesamt,salesmonth,last_process)";
             tmp_qry+=" values "
-            tmp_qry+=" ('"+process_type+"','"+tmp_Outlet+"','"+tmp_itemcode+"','"+tmp_barcode+"','"+tmp_description+"','"+tmp_PS+"',"+tmp_QtyAdjusted+",'"+tmp_AmountAdjusted+"',"+tmp_docdate+",null,null,'"+period+"',now())";
+            tmp_qry+=" ('"+process_type+"','"+tmp_Outlet+"','"+tmp_itemcode+"','"+tmp_barcode+"','"+tmp_description+"','"+tmp_PS+"','"+tmp_um+"',"+tmp_QtyAdjusted+",'"+tmp_AmountAdjusted+"',"+tmp_docdate+",null,null,'"+period+"',now())";
             // console.log(tmp_qry);process.exit();
             await connWeb.query(tmp_qry);   
         }
@@ -166,36 +171,36 @@ async function process_adjusted(process_type,vartype,outletlist,period){
 }
 console.clear();
 async function process_sales(){    
-    let FH = "'FABR','FBPT','FBPW','FBTR','FDSR','FGLP','FKPP','FKPS','FLBS','FMSG','FPGH','FPKR','FPLH','FPRG','FSAB','FSGM','FSIK','FSSL','FSTK','FSTP','FTKM','FTKP','FTMN','FTMS','FTMU','FTPT'";
-    let SBH = "'BDS','DGO','KHM','KNG','M88','MGT','MLN','PPR','PR2','PTS','SJT','SPG','TLP','TRN','SBBK','SRGD','STLB','SLMW','SPRS','STPP','GBVL','GDGO','GDMP','GHTP','GINN','GINT','GKBT','GKMS','GKPP','GLTJ','GPLC','GPPR','GPTG','GT2A','GTWR'";
-    let period='2024-08' 
-    // console.log('Processing Adjustment 2024 FH_TMP1');
-    // await process_adjusted('2024 FH_TMP1','FH_TMP1',FH,period);
-    // console.log('Adjustment 2024 FH_TMP1 - Done');
-    // console.log('Processing Sales 2024 FH_TMP1');
-    // await process_salesdata('2024 FH_TMP1','FH_TMP1',FH,period);
-    // console.log('Sales 2024 FH_TMP1 - Done');
+    let FH = "'FABR','FBPT','FBPW','FBTR','FDC','FDSR','FGLP','FKPP','FKPS','FLBS','FMSG','FPGH','FPKR','FPLH','FPRG','FPRS','FSAB','FSGM','FSIK','FSLG','FSSL','FSTK','FSTP','FTKM','FTKP','FTMN','FTMS','FTMU','FTPT'";
+    let SBH = "'TRN','MGT','MLN','DGO','SPG','PTS','PR2','KNG','BDS','M88','SJT','PPR','TLP','SBBK','SLDO','STLB','SRGD','STPP','SLMW','GTWR','GBVL','GPTG','GDGO','GKBT','GPPR','GKMS','gkpp','GHTP','GINN','GDMP','GPLC','GITN','GDMP','GPLC','GINT','GLTJ','GT2A'";
+    let period='2024-10' 
+    console.log('Processing Adjustment 2024 FH_TMP1');
+    await process_adjusted('2024 FH_TMP1','FH_TMP1',FH,period);
+    console.log('Adjustment 2024 FH_TMP1 - Done');
+    console.log('Processing Sales 2024 FH_TMP1');
+    await process_salesdata('2024 FH_TMP1','FH_TMP1',FH,period);
+    console.log('Sales 2024 FH_TMP1 - Done');
 
-    // console.log('Processing Adjustment 2024 FH_TMP2');
-    // await process_adjusted('2024 FH_TMP2','FH_TMP2',FH,period);
-    // console.log('Adjustment 2024 FH_TMP2 - Done');
-    // console.log('Processing Sales 2024 FH_TMP2');
-    // await process_salesdata('2024 FH_TMP2','FH_TMP2',FH,period);
-    // console.log('Sales 2024 FH_TMP2 - Done');
+    console.log('Processing Adjustment 2024 FH_TMP2');
+    await process_adjusted('2024 FH_TMP2','FH_TMP2',FH,period);
+    console.log('Adjustment 2024 FH_TMP2 - Done');
+    console.log('Processing Sales 2024 FH_TMP2');
+    await process_salesdata('2024 FH_TMP2','FH_TMP2',FH,period);
+    console.log('Sales 2024 FH_TMP2 - Done');
     
-    // console.log('Processing Adjustment 2024 FH_TMP3');
-    // await process_adjusted('2024 FH_TMP3','FH_TMP3',FH,period);
-    // console.log('Adjustment 2024 FH_TMP3 - Done');
-    // console.log('Processing Sales 2024 FH_TMP3');
-    // await process_salesdata('2024 FH_TMP1','FH_TMP3',FH,period);
-    // console.log('Sales 2024 FH_TMP3 - Done');
+    console.log('Processing Adjustment 2024 FH_TMP3');
+    await process_adjusted('2024 FH_TMP3','FH_TMP3',FH,period);
+    console.log('Adjustment 2024 FH_TMP3 - Done');
+    console.log('Processing Sales 2024 FH_TMP3');
+    await process_salesdata('2024 FH_TMP3','FH_TMP3',FH,period);
+    console.log('Sales 2024 FH_TMP3 - Done');
 
-    // console.log('Processing Adjustment 2024 FH_TMP4');
-    // await process_adjusted('2024 FH_TMP4','FH_TMP4',FH,period);
-    // console.log('Adjustment 2024 FH_TMP4 - Done');
-    // console.log('Processing Sales 2024 FH_TMP4');
-    // await process_salesdata('2024 FH_TMP4','FH_TMP4',FH,period);
-    // console.log('Sales 2024 FH_TMP4 - Done');
+    console.log('Processing Adjustment 2024 FH_TMP4');
+    await process_adjusted('2024 FH_TMP4','FH_TMP4',FH,period);
+    console.log('Adjustment 2024 FH_TMP4 - Done');
+    console.log('Processing Sales 2024 FH_TMP4');
+    await process_salesdata('2024 FH_TMP4','FH_TMP4',FH,period);
+    console.log('Sales 2024 FH_TMP4 - Done');
 
     console.log('Processing Adjustment 2024 SH_TMP1');
     await process_adjusted('2024 SH_TMP1','SH_TMP1',SBH,period);
@@ -218,12 +223,12 @@ async function process_sales(){
     await process_salesdata('2024 SH_TMP3','SH_TMP3',SBH,period);
     console.log('Sales 2024 SH_TMP3 - Done');
 
-    // console.log('Processing Adjustment 2024 SH_TMP4');
-    // await process_adjusted('2024 SH_TMP4','SH_TMP4',SBH,period);
-    // console.log('Adjustment 2024 SH_TMP4 - Done');
-    // console.log('Processing Sales 2024 SH_TMP4');
-    // await process_salesdata('2024 SH_TMP4','SH_TMP4',SBH,period);
-    // console.log('Sales 2024 SH_TMP4 - Done');
+    console.log('Processing Adjustment 2024 SH_TMP4');
+    await process_adjusted('2024 SH_TMP4','SH_TMP4',SBH,period);
+    console.log('Adjustment 2024 SH_TMP4 - Done');
+    console.log('Processing Sales 2024 SH_TMP4');
+    await process_salesdata('2024 SH_TMP4','SH_TMP4',SBH,period);
+    console.log('Sales 2024 SH_TMP4 - Done');
 
     process.exit();
 }
