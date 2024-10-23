@@ -206,16 +206,16 @@ async function process_sales(){
     console.clear();
     const concept='SH';
     const loc="LEFT(a.location,1)<>'f'";
-    await process_data('2024-10',concept,loc);
-    await process_dept('2024-10',concept,loc);    
+    // await process_data('2024-10',concept,loc);
+    // await process_dept('2024-10',concept,loc);    
     for (let month = 1; month <= 12; month++) {
-        // const periodcode = `2022-${month.toString().padStart(2, '0')}`;
-        // console.log('Processing - '+periodcode);
-        // await process_data(periodcode,concept,loc);
-        // console.log('Done - '+periodcode);
-        // console.log('Processing - '+periodcode);
-        // await process_dept(periodcode,concept,loc);
-        // console.log('Done - '+periodcode);        
+        const periodcode = `2022-${month.toString().padStart(2, '0')}`;
+        console.log('Processing - '+periodcode);
+        await process_data(periodcode,concept,loc);
+        console.log('Done - '+periodcode);
+        console.log('Processing - '+periodcode);
+        await process_dept(periodcode,concept,loc);
+        console.log('Done - '+periodcode);        
     }    
     process.exit();
 }
